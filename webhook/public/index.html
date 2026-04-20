@@ -1,203 +1,153 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Dashboard — Camila Carvalho Digital</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter','Segoe UI',sans-serif;background:#0b0d14;color:#e2e8f0;min-height:100vh}
 
-    body {
-      font-family: 'Inter', 'Segoe UI', sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
-      min-height: 100vh;
-    }
+    header{background:#13162a;border-bottom:1px solid #1e2340;padding:.9rem 1.8rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+    header h1{font-size:1.05rem;font-weight:700;color:#fff}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pulse 1.5s infinite;display:inline-block;margin-right:6px}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .badge{font-size:.72rem;padding:3px 10px;border-radius:99px;background:#1e2340;color:#64748b}
+    .badge.ok{background:#052e16;color:#4ade80}
+    .badge.warn{background:#2d1a0e;color:#fb923c}
 
-    header {
-      background: #1a1d2e;
-      border-bottom: 1px solid #2d3148;
-      padding: 1rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    main{padding:1.4rem 1.8rem;max-width:1500px;margin:0 auto}
 
-    header h1 { font-size: 1.2rem; font-weight: 700; color: #fff; }
-    header span { font-size: 0.8rem; color: #64748b; }
+    .section-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#475569;margin:1.6rem 0 .8rem;display:flex;align-items:center;gap:.5rem}
+    .section-title::after{content:'';flex:1;height:1px;background:#1e2340}
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.75rem;
-      padding: 4px 10px;
-      border-radius: 99px;
-      background: #1e293b;
-      color: #94a3b8;
-    }
-    .badge.live { background: #052e16; color: #4ade80; }
-    .badge.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    /* KPI */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem}
+    .kpi{background:#13162a;border:1px solid #1e2340;border-radius:12px;padding:1rem 1.2rem}
+    .kpi .lbl{font-size:.68rem;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem}
+    .kpi .val{font-size:1.9rem;font-weight:800;color:#fff;line-height:1}
+    .kpi .sub{font-size:.68rem;color:#334155;margin-top:.25rem}
+    .kpi.accent .val{color:#818cf8}
+    .kpi.green  .val{color:#4ade80}
+    .kpi.amber  .val{color:#fb923c}
+    .kpi.cyan   .val{color:#22d3ee}
 
-    main { padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+    /* Charts */
+    .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:.75rem}
+    .card{background:#13162a;border:1px solid #1e2340;border-radius:12px;padding:1.1rem 1.3rem}
+    .card h2{font-size:.72rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.9rem}
+    .card canvas{max-height:220px}
+    .card.wide{grid-column:1/-1}
 
-    /* KPI cards */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
+    /* Tabela */
+    table{width:100%;border-collapse:collapse;font-size:.8rem}
+    thead th{text-align:left;padding:.45rem .7rem;color:#475569;border-bottom:1px solid #1e2340;font-weight:500;font-size:.7rem;text-transform:uppercase}
+    tbody td{padding:.5rem .7rem;border-bottom:1px solid #131627;color:#cbd5e1}
+    tbody tr:hover{background:#1a1d2e}
+    .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.68rem;font-weight:600}
+    .pill.encerramento{background:#1e1b4b;color:#818cf8}
+    .pill.delegacao   {background:#052e16;color:#4ade80}
+    .pill.aberto      {background:#052e16;color:#4ade80}
+    .pill.fechado     {background:#1e1b4b;color:#818cf8}
+    .pill.default     {background:#1e293b;color:#64748b}
 
-    .kpi-card {
-      background: #1a1d2e;
-      border: 1px solid #2d3148;
-      border-radius: 12px;
-      padding: 1.2rem 1.4rem;
-    }
-    .kpi-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem; }
-    .kpi-card .value { font-size: 2rem; font-weight: 700; color: #fff; }
-    .kpi-card .sub   { font-size: 0.72rem; color: #475569; margin-top: .2rem; }
-
-    /* Charts grid */
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .chart-card {
-      background: #1a1d2e;
-      border: 1px solid #2d3148;
-      border-radius: 12px;
-      padding: 1.2rem 1.4rem;
-    }
-    .chart-card h2 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
-    .chart-card canvas { max-height: 240px; }
-
-    /* Tabela de eventos */
-    .events-card {
-      background: #1a1d2e;
-      border: 1px solid #2d3148;
-      border-radius: 12px;
-      padding: 1.2rem 1.4rem;
-    }
-    .events-card h2 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
-
-    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    thead th { text-align: left; padding: .5rem .75rem; color: #475569; border-bottom: 1px solid #2d3148; font-weight: 500; }
-    tbody td { padding: .55rem .75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-    tbody tr:hover { background: #1e2235; }
-
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 99px;
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
-    .pill.aberto    { background: #052e16; color: #4ade80; }
-    .pill.fechado   { background: #1e1b4b; color: #818cf8; }
-    .pill.pendente  { background: #2d1a0e; color: #fb923c; }
-    .pill.default   { background: #1e293b; color: #94a3b8; }
-
-    /* Botão refresh */
-    .toolbar {
-      display: flex;
-      justify-content: flex-end;
-      gap: .5rem;
-      margin-bottom: 1rem;
-    }
-    button {
-      background: #2d3148;
-      color: #cbd5e1;
-      border: 1px solid #3d4168;
-      border-radius: 8px;
-      padding: .4rem .9rem;
-      font-size: .8rem;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    button:hover { background: #3d4168; }
-    button.danger { background: #2d1a0e; border-color: #7c2d12; color: #fb923c; }
+    /* Toolbar */
+    .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:.5rem;flex-wrap:wrap}
+    .toolbar-right{display:flex;gap:.5rem}
+    button{background:#1e2340;color:#94a3b8;border:1px solid #2d3563;border-radius:8px;padding:.35rem .85rem;font-size:.78rem;cursor:pointer;transition:background .15s}
+    button:hover{background:#2d3563}
+    button.danger{background:#2d1a0e;border-color:#7c2d12;color:#fb923c}
+    select{background:#1e2340;color:#94a3b8;border:1px solid #2d3563;border-radius:8px;padding:.35rem .7rem;font-size:.78rem;cursor:pointer}
+    #cookie-status{font-size:.72rem;color:#64748b}
   </style>
 </head>
 <body>
 
 <header>
   <h1>Dashboard — Camila Carvalho Digital</h1>
-  <div style="display:flex;align-items:center;gap:.75rem">
-    <span id="last-update"></span>
-    <span class="badge live" id="live-badge">Ao vivo</span>
+  <div style="display:flex;align-items:center;gap:.6rem">
+    <span id="last-update" class="badge"></span>
+    <span class="badge ok"><span class="live-dot"></span>Ao vivo</span>
   </div>
 </header>
 
 <main>
   <div class="toolbar">
-    <button onclick="loadAll()">↻ Atualizar</button>
-    <button class="danger" onclick="injectTest()">+ Dados de teste</button>
-  </div>
-
-  <!-- KPIs -->
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="label">Hoje</div>
-      <div class="value" id="kpi-hoje">–</div>
-      <div class="sub">eventos recebidos</div>
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <span id="cookie-status"></span>
     </div>
-    <div class="kpi-card">
-      <div class="label">Últimos 7 dias</div>
-      <div class="value" id="kpi-semana">–</div>
-      <div class="sub">eventos</div>
-    </div>
-    <div class="kpi-card">
-      <div class="label">Este mês</div>
-      <div class="value" id="kpi-mes">–</div>
-      <div class="sub">eventos</div>
+    <div class="toolbar-right">
+      <select id="periodo" onchange="loadHistorico()">
+        <option value="7">Últimos 7 dias</option>
+        <option value="30" selected>Últimos 30 dias</option>
+        <option value="60">Últimos 60 dias</option>
+        <option value="90">Últimos 90 dias</option>
+      </select>
+      <button onclick="loadAll()">↻ Atualizar</button>
+      <button class="danger" onclick="injectTest()">+ Dados de teste</button>
     </div>
   </div>
 
-  <!-- Gráficos -->
+  <!-- ─── KPIs histórico ─────────────────────────────── -->
+  <div class="section-title">Visão Geral — Histórico ChatGuru</div>
+  <div class="kpi-grid" id="kpis-historico">
+    <div class="kpi accent"><div class="lbl">Novos chats</div><div class="val" id="kpi-novos">–</div><div class="sub">no período</div></div>
+    <div class="kpi cyan">  <div class="lbl">Chats abertos</div><div class="val" id="kpi-abertos">–</div><div class="sub">no período</div></div>
+    <div class="kpi green"> <div class="lbl">Msgs recebidas</div><div class="val" id="kpi-msgs-rec">–</div><div class="sub">no período</div></div>
+    <div class="kpi">       <div class="lbl">Msgs enviadas</div><div class="val" id="kpi-msgs-env">–</div><div class="sub">no período</div></div>
+    <div class="kpi amber"> <div class="lbl">Tempo médio resolução</div><div class="val" id="kpi-tma">–</div><div class="sub">horas</div></div>
+    <div class="kpi">       <div class="lbl">Tempo médio aberto</div><div class="val" id="kpi-tmo">–</div><div class="sub">horas</div></div>
+    <div class="kpi">       <div class="lbl">Humano vs Bot</div><div class="val" id="kpi-humano">–</div><div class="sub" id="kpi-bot">–</div></div>
+    <div class="kpi green"> <div class="lbl">Média diária</div><div class="val" id="kpi-media">–</div><div class="sub">novos chats/dia</div></div>
+  </div>
+
+  <!-- ─── Gráficos histórico ─────────────────────────── -->
+  <div class="section-title">Análise Histórica</div>
   <div class="charts-grid">
-    <div class="chart-card">
-      <h2>Volume diário (30 dias)</h2>
-      <canvas id="chart-diario"></canvas>
+    <div class="card wide">
+      <h2>Volume diário — Novos chats & Mensagens recebidas</h2>
+      <canvas id="chart-volume"></canvas>
     </div>
-    <div class="chart-card">
-      <h2>Por atendente</h2>
-      <canvas id="chart-atendente"></canvas>
+    <div class="card">
+      <h2>Mensagens por atendente</h2>
+      <canvas id="chart-atendentes"></canvas>
     </div>
-    <div class="chart-card">
-      <h2>Por equipe</h2>
+    <div class="card">
+      <h2>Tempos médios de atendimento</h2>
+      <canvas id="chart-tempos"></canvas>
+    </div>
+    <div class="card">
+      <h2>Bot vs Humano</h2>
+      <canvas id="chart-bot-humano"></canvas>
+    </div>
+  </div>
+
+  <!-- ─── KPIs webhooks ─────────────────────────────── -->
+  <div class="section-title">Webhooks em Tempo Real</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="lbl">Hoje</div><div class="val" id="kpi-hoje">–</div><div class="sub">eventos</div></div>
+    <div class="kpi"><div class="lbl">7 dias</div><div class="val" id="kpi-semana">–</div><div class="sub">eventos</div></div>
+    <div class="kpi"><div class="lbl">Este mês</div><div class="val" id="kpi-mes">–</div><div class="sub">eventos</div></div>
+  </div>
+
+  <div class="charts-grid" style="margin-top:.75rem">
+    <div class="card">
+      <h2>Por equipe (webhooks)</h2>
       <canvas id="chart-equipe"></canvas>
     </div>
-    <div class="chart-card">
-      <h2>Volume por hora (hoje)</h2>
-      <canvas id="chart-horario"></canvas>
-    </div>
-    <div class="chart-card">
-      <h2>Status dos chats</h2>
-      <canvas id="chart-status"></canvas>
+    <div class="card">
+      <h2>Por tipo de evento (webhooks)</h2>
+      <canvas id="chart-tipo"></canvas>
     </div>
   </div>
 
-  <!-- Tabela de eventos recentes -->
-  <div class="events-card">
-    <h2>Eventos recentes</h2>
+  <!-- ─── Tabela eventos recentes ───────────────────── -->
+  <div class="section-title">Eventos Recentes</div>
+  <div class="card wide">
     <table>
       <thead>
-        <tr>
-          <th>#</th>
-          <th>Data/Hora</th>
-          <th>Número</th>
-          <th>Atendente</th>
-          <th>Equipe</th>
-          <th>Status</th>
-          <th>Tipo</th>
-        </tr>
+        <tr><th>#</th><th>Data/Hora</th><th>Número</th><th>Atendente</th><th>Equipe</th><th>Tipo</th></tr>
       </thead>
       <tbody id="eventos-tbody"></tbody>
     </table>
@@ -205,136 +155,166 @@
 </main>
 
 <script>
-const COLORS = ['#6366f1','#22d3ee','#f59e0b','#4ade80','#f43f5e','#a78bfa','#34d399','#fb923c'];
+const COLORS  = ['#818cf8','#22d3ee','#4ade80','#fb923c','#f43f5e','#a78bfa','#34d399','#fbbf24','#60a5fa','#e879f9'];
+const charts  = {};
 
-let charts = {};
-
-function createOrUpdate(id, type, labels, data, label, colorIndex = 0) {
-  const ctx = document.getElementById(id).getContext('2d');
-  const color = COLORS[colorIndex % COLORS.length];
-
-  if (charts[id]) {
-    charts[id].data.labels = labels;
-    charts[id].data.datasets[0].data = data;
-    charts[id].update();
-    return;
-  }
-
-  const isDonut = type === 'doughnut';
+function upsertChart(id, type, labels, datasets) {
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  if (charts[id]) { charts[id].destroy(); }
+  const isDoughnut = type === 'doughnut';
   charts[id] = new Chart(ctx, {
     type,
-    data: {
-      labels,
-      datasets: [{
-        label,
-        data,
-        backgroundColor: isDonut ? COLORS : color + '33',
-        borderColor: isDonut ? COLORS : color,
-        borderWidth: 2,
-        fill: type === 'line',
-        tension: 0.4,
-        pointRadius: 3,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { display: isDonut, labels: { color: '#94a3b8', font: { size: 11 } } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y ?? ctx.parsed} eventos` } }
+        legend: { display: isDoughnut || datasets.length > 1, labels: { color:'#64748b', font:{size:11}, boxWidth:12 } },
       },
-      scales: isDonut ? {} : {
-        x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e293b' } },
-        y: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e293b' }, beginAtZero: true }
+      scales: isDoughnut ? {} : {
+        x: { ticks:{color:'#475569',font:{size:10}}, grid:{color:'#1a1d2e'} },
+        y: { ticks:{color:'#475569',font:{size:10}}, grid:{color:'#1a1d2e'}, beginAtZero:true }
       }
     }
   });
 }
 
-async function loadAll() {
-  try {
-    const [resumo, diario, atendente, equipe, horario, statusData, eventos] = await Promise.all([
-      fetch('/api/resumo').then(r => r.json()),
-      fetch('/api/volume-diario').then(r => r.json()),
-      fetch('/api/por-atendente').then(r => r.json()),
-      fetch('/api/por-equipe').then(r => r.json()),
-      fetch('/api/volume-horario').then(r => r.json()),
-      fetch('/api/por-status').then(r => r.json()),
-      fetch('/api/eventos-recentes').then(r => r.json()),
-    ]);
-
-    // KPIs
-    document.getElementById('kpi-hoje').textContent   = resumo.hoje;
-    document.getElementById('kpi-semana').textContent = resumo.semana;
-    document.getElementById('kpi-mes').textContent    = resumo.mes;
-
-    // Volume diário
-    createOrUpdate('chart-diario', 'line',
-      diario.map(r => r.dia),
-      diario.map(r => r.total),
-      'Eventos', 0);
-
-    // Por atendente
-    createOrUpdate('chart-atendente', 'bar',
-      atendente.map(r => r.atendente),
-      atendente.map(r => r.total),
-      'Chats', 1);
-
-    // Por equipe
-    createOrUpdate('chart-equipe', 'bar',
-      equipe.map(r => r.equipe),
-      equipe.map(r => r.total),
-      'Chats', 2);
-
-    // Volume horário
-    const horas = Array.from({length: 24}, (_, i) => String(i).padStart(2, '0'));
-    const horMap = Object.fromEntries(horario.map(r => [r.hora, r.total]));
-    createOrUpdate('chart-horario', 'bar',
-      horas,
-      horas.map(h => horMap[h] || 0),
-      'Eventos hoje', 3);
-
-    // Status
-    createOrUpdate('chart-status', 'doughnut',
-      statusData.map(r => r.status_chat),
-      statusData.map(r => r.total),
-      'Status');
-
-    // Tabela
-    const tbody = document.getElementById('eventos-tbody');
-    tbody.innerHTML = eventos.map(e => `
-      <tr>
-        <td style="color:#475569">${e.id}</td>
-        <td>${e.received_at}</td>
-        <td>${e.chat_number || '–'}</td>
-        <td>${e.atendente || '–'}</td>
-        <td>${e.equipe || '–'}</td>
-        <td>${pillStatus(e.status_chat)}</td>
-        <td>${e.event_type || '–'}</td>
-      </tr>
-    `).join('');
-
-    document.getElementById('last-update').textContent =
-      'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
-  } catch (err) {
-    console.error('Erro ao carregar dados', err);
-  }
+function fmt(n) {
+  if (typeof n !== 'number') return n;
+  return n >= 1000 ? (n/1000).toFixed(1)+'k' : String(n);
 }
 
-function pillStatus(s) {
+// ── Histórico ChatGuru ────────────────────────────────────────────────────────
+async function loadHistorico() {
+  const dias = document.getElementById('periodo').value;
+  const to   = new Date().toISOString().slice(0,10);
+  const from = new Date(Date.now() - dias*86400000).toISOString().slice(0,10);
+
+  const res = await fetch(`/api/historico?from=${from}&to=${to}`).catch(()=>null);
+  if (!res || !res.ok) {
+    document.getElementById('cookie-status').textContent = '⚠ Cookie expirado — configure CHATGURU_COOKIE';
+    return;
+  }
+
+  const json = await res.json();
+  if (json.error) {
+    document.getElementById('cookie-status').textContent = '⚠ ' + json.error;
+    return;
+  }
+
+  document.getElementById('cookie-status').textContent = '✓ Dados históricos carregados';
+  const d = json.data_ret;
+
+  // KPIs
+  document.getElementById('kpi-novos').textContent    = fmt(d.chats_created_total);
+  document.getElementById('kpi-abertos').textContent  = fmt(d.chats_opened_total);
+  document.getElementById('kpi-msgs-rec').textContent = fmt(d.msgs_received_total);
+  document.getElementById('kpi-msgs-env').textContent = fmt(d.msgs_sent_total);
+  document.getElementById('kpi-tma').textContent      = d.conversation_closed_or_resolved_medium;
+  document.getElementById('kpi-tmo').textContent      = d.conversation_open_medium;
+  document.getElementById('kpi-humano').textContent   = d.msgs_by_user_total_percent;
+  document.getElementById('kpi-bot').textContent      = 'Bot: ' + d.messages_by_bot_or_phone_percent;
+  document.getElementById('kpi-media').textContent    = d.chats_created_medium?.toString().split(' ')[0] || '–';
+
+  // Gráfico volume (dual axis)
+  upsertChart('chart-volume', 'line', d.labels, [
+    { label:'Novos chats', data: d.chats_created, borderColor: COLORS[0], backgroundColor: COLORS[0]+'22', fill:true, tension:.4, pointRadius:2 },
+    { label:'Msgs recebidas', data: d.msgs_received, borderColor: COLORS[2], backgroundColor: COLORS[2]+'22', fill:false, tension:.4, pointRadius:2 },
+  ]);
+
+  // Gráfico atendentes
+  const labels = d.messages_by_user__labels || [];
+  const percents = d.messages_by_user_percent || [];
+  const pares = labels.map((l,i) => [l, parseFloat(percents[i]||0)])
+    .filter(([,v]) => v > 0)
+    .sort((a,b) => b[1]-a[1]);
+
+  upsertChart('chart-atendentes', 'bar',
+    pares.map(p=>p[0]),
+    [{ label:'% mensagens', data: pares.map(p=>p[1]),
+       backgroundColor: COLORS.map(c=>c+'bb'), borderColor: COLORS, borderWidth:1 }]
+  );
+
+  // Tempos médios
+  upsertChart('chart-tempos', 'bar',
+    ['Fechar/Resolver','Em Aberto','Pendente','Aguardando'],
+    [{ label:'Horas',
+       data: [
+         parseFloat(d.conversation_closed_or_resolved_medium),
+         parseFloat(d.conversation_open_medium),
+         parseFloat(d.conversation_pending_medium),
+         parseFloat(d.conversation_waiting_medium),
+       ],
+       backgroundColor: [COLORS[4]+'bb', COLORS[0]+'bb', COLORS[2]+'bb', COLORS[1]+'bb'],
+       borderColor:     [COLORS[4], COLORS[0], COLORS[2], COLORS[1]],
+       borderWidth:1 }]
+  );
+
+  // Bot vs Humano
+  const humPct = parseFloat(d.msgs_by_user_total_percent);
+  const botPct = parseFloat(d.messages_by_bot_or_phone_percent);
+  upsertChart('chart-bot-humano', 'doughnut',
+    ['Humano (atendentes)', 'Bot / Automático'],
+    [{ data:[humPct, botPct], backgroundColor:[COLORS[2]+'cc', COLORS[0]+'cc'], borderColor:[COLORS[2], COLORS[0]], borderWidth:2 }]
+  );
+}
+
+// ── Webhooks em tempo real ────────────────────────────────────────────────────
+async function loadWebhooks() {
+  const [resumo, equipe, status, eventos] = await Promise.all([
+    fetch('/api/resumo').then(r=>r.json()),
+    fetch('/api/por-equipe').then(r=>r.json()),
+    fetch('/api/por-status').then(r=>r.json()),
+    fetch('/api/eventos-recentes').then(r=>r.json()),
+  ]).catch(()=>[{},{},{},[]]);
+
+  document.getElementById('kpi-hoje').textContent   = resumo.hoje   ?? '–';
+  document.getElementById('kpi-semana').textContent = resumo.semana ?? '–';
+  document.getElementById('kpi-mes').textContent    = resumo.mes    ?? '–';
+
+  upsertChart('chart-equipe', 'bar',
+    equipe.map(r=>r.equipe),
+    [{ label:'Eventos', data:equipe.map(r=>r.total),
+       backgroundColor: COLORS.map(c=>c+'bb'), borderColor:COLORS, borderWidth:1 }]
+  );
+
+  upsertChart('chart-tipo', 'doughnut',
+    status.map(r=>r.status_chat),
+    [{ data:status.map(r=>r.total), backgroundColor:COLORS.map(c=>c+'cc'), borderColor:COLORS, borderWidth:2 }]
+  );
+
+  const tbody = document.getElementById('eventos-tbody');
+  tbody.innerHTML = eventos.map(e=>`
+    <tr>
+      <td style="color:#334155">${e.id}</td>
+      <td>${e.received_at}</td>
+      <td>${e.chat_number||'–'}</td>
+      <td>${e.atendente||'–'}</td>
+      <td>${e.equipe||'–'}</td>
+      <td>${pill(e.event_type||e.status_chat)}</td>
+    </tr>`).join('');
+}
+
+function pill(s) {
   if (!s) return `<span class="pill default">–</span>`;
-  const cls = ['aberto','fechado','pendente'].includes(s.toLowerCase()) ? s.toLowerCase() : 'default';
+  const cls = ['encerramento','delegacao','aberto','fechado'].includes(s?.toLowerCase()) ? s.toLowerCase() : 'default';
   return `<span class="pill ${cls}">${s}</span>`;
 }
 
-async function injectTest() {
-  await fetch('/api/teste', { method: 'POST' });
-  loadAll();
+async function loadAll() {
+  await Promise.all([loadHistorico(), loadWebhooks()]);
+  document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR');
 }
 
-// Carregar ao iniciar + auto-refresh a cada 30s
+async function injectTest() {
+  await fetch('/api/teste', {method:'POST'});
+  loadWebhooks();
+}
+
 loadAll();
-setInterval(loadAll, 30000);
+setInterval(loadWebhooks, 30000);
+setInterval(loadHistorico, 300000); // atualiza histórico a cada 5min
 </script>
 </body>
 </html>
