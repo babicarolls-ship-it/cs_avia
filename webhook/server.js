@@ -4,42 +4,102 @@ const https   = require('https');
 const path    = require('path');
 const db      = require('./database');
 
-const app    = express();
-const PORT   = process.env.PORT || 3000;
-const WEBHOOK_SECRET   = process.env.WEBHOOK_SECRET   || '';
-const CHATGURU_URL     = process.env.CHATGURU_URL     || 'https://s18.chatguru.app';
-const CHATGURU_COOKIE  = process.env.CHATGURU_COOKIE  || '';
+const app   = express();
+const PORT  = process.env.PORT || 3000;
+const WEBHOOK_SECRET  = process.env.WEBHOOK_SECRET  || '';
+const CHATGURU_URL    = process.env.CHATGURU_URL    || 'https://s18.chatguru.app';
+const CHATGURU_EMAIL  = process.env.CHATGURU_EMAIL  || '';
+const CHATGURU_PASS   = process.env.CHATGURU_PASS   || '';
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function cgFetch(path) {
-  return new Promise((resolve, reject) => {
-    const url = new URL(CHATGURU_URL + path);
-    const opts = {
+// ── Session manager ───────────────────────────────────────────────────────────
+let sessionCookie = '';
+let loginInProgress = false;
+
+async function doLogin() {
+  if (loginInProgress) return false;
+  loginInProgress = true;
+  console.log('[auth] Renovando sessão ChatGuru...');
+
+  return new Promise(resolve => {
+    const body = `email=${encodeURIComponent(CHATGURU_EMAIL)}&password=${encodeURIComponent(CHATGURU_PASS)}&browser_session=`;
+    const host = new URL(CHATGURU_URL).hostname;
+
+    const req = https.request({
+      hostname: host,
+      path: '/login',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+        'User-Agent': 'Mozilla/5.0',
+      }
+    }, res => {
+      loginInProgress = false;
+      if (res.statusCode === 302) {
+        const cookies = res.headers['set-cookie'] || [];
+        const session = cookies.find(c => c.startsWith('session='));
+        if (session) {
+          sessionCookie = session.split(';')[0];
+          console.log('[auth] Sessão renovada com sucesso.');
+          resolve(true);
+        } else {
+          console.log('[auth] Login falhou — sem cookie de sessão.');
+          resolve(false);
+        }
+      } else {
+        console.log('[auth] Login falhou — status:', res.statusCode);
+        resolve(false);
+      }
+    });
+    req.on('error', e => { loginInProgress = false; console.log('[auth] Erro:', e.message); resolve(false); });
+    req.write(body);
+    req.end();
+  });
+}
+
+async function cgFetch(urlPath, retry = true) {
+  if (!sessionCookie) {
+    const ok = await doLogin();
+    if (!ok) return null;
+  }
+
+  return new Promise(async resolve => {
+    const url = new URL(CHATGURU_URL + urlPath);
+    https.get({
       hostname: url.hostname,
       path: url.pathname + url.search,
-      headers: { Cookie: CHATGURU_COOKIE, 'User-Agent': 'Mozilla/5.0' },
-    };
-    https.get(opts, res => {
+      headers: { Cookie: sessionCookie, 'User-Agent': 'Mozilla/5.0' },
+    }, res => {
+      if (res.statusCode === 302 && retry) {
+        // Sessão expirou — faz login e tenta de novo
+        sessionCookie = '';
+        doLogin().then(ok => ok ? cgFetch(urlPath, false).then(resolve) : resolve(null));
+        return;
+      }
       let body = '';
       res.on('data', c => body += c);
       res.on('end', () => {
-        if (res.statusCode === 302) return resolve(null);
         try { resolve(JSON.parse(body)); } catch { resolve(null); }
       });
-    }).on('error', reject);
+    }).on('error', () => resolve(null));
   });
 }
 
 function dateDaysAgo(n) {
-  const d = new Date(Date.now() - n * 86400000);
-  return d.toISOString().slice(0, 10);
+  return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 }
 
-// ── Webhook receiver ─────────────────────────────────────────────────────────
+// Renovação preventiva a cada 6h
+if (CHATGURU_EMAIL && CHATGURU_PASS) {
+  doLogin();
+  setInterval(doLogin, 6 * 60 * 60 * 1000);
+}
+
+// ── Webhook receiver ──────────────────────────────────────────────────────────
 app.post('/webhook', (req, res) => {
   const body = req.body;
   if (WEBHOOK_SECRET && body.secret !== WEBHOOK_SECRET)
@@ -60,20 +120,20 @@ app.post('/webhook', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Proxy ChatGuru histórico ──────────────────────────────────────────────────
+// ── Proxy histórico ChatGuru ──────────────────────────────────────────────────
 app.get('/api/historico', async (req, res) => {
-  const from = req.query.from || dateDaysAgo(30);
-  const to   = req.query.to   || dateDaysAgo(0);
-  const phone = req.query.phone || '';
+  if (!CHATGURU_EMAIL || !CHATGURU_PASS)
+    return res.status(503).json({ error: 'CHATGURU_EMAIL/PASS não configurados' });
 
-  if (!CHATGURU_COOKIE)
-    return res.status(503).json({ error: 'CHATGURU_COOKIE não configurado' });
+  const from  = req.query.from  || dateDaysAgo(30);
+  const to    = req.query.to    || dateDaysAgo(0);
+  const phone = req.query.phone || '';
 
   const data = await cgFetch(
     `/charts/data?date_from=${from}&date_to=${to}&sunday=undefined&saturday=undefined&phone_id=${phone}`
   );
 
-  if (!data) return res.status(502).json({ error: 'Sessão expirada — atualize o cookie' });
+  if (!data) return res.status(502).json({ error: 'Falha ao buscar dados — verifique credenciais' });
   res.json(data);
 });
 
@@ -86,19 +146,16 @@ app.get('/api/volume-diario',    (req, res) => res.json(db.volumeDiario()));
 app.get('/api/volume-horario',   (req, res) => res.json(db.volumeHorario()));
 app.get('/api/eventos-recentes', (req, res) => res.json(db.recentes()));
 
-// Dados de teste
 app.post('/api/teste', (req, res) => {
   const atendentes = ['Carolina Suzarte','Bruna','Isabella','Julia','Anderson','Caroline Vieira'];
   const equipes    = ['Suporte ao aluno','Renovação','Financeiro','Abby','Outros assuntos'];
-  const statuses   = ['encerramento','delegacao'];
-
   for (let i = 0; i < 20; i++) {
     db.insert({
       phone_id:    '69dd57b8e026e4843d55b5eb',
       chat_number: `5519${Math.floor(Math.random() * 900000000 + 100000000)}`,
       atendente:   atendentes[Math.floor(Math.random() * atendentes.length)],
       equipe:      equipes[Math.floor(Math.random() * equipes.length)],
-      status_chat: statuses[Math.floor(Math.random() * statuses.length)],
+      status_chat: ['encerramento','delegacao'][Math.floor(Math.random() * 2)],
       event_type:  'encerramento',
       raw:         JSON.stringify({ teste: true }),
     });
@@ -108,5 +165,5 @@ app.post('/api/teste', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`✓ http://localhost:${PORT}`);
-  console.log(`  Cookie: ${CHATGURU_COOKIE ? 'configurado' : 'NÃO configurado'}`);
+  console.log(`  Auth: ${CHATGURU_EMAIL ? CHATGURU_EMAIL : 'NÃO configurado'}`);
 });
