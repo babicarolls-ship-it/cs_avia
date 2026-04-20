@@ -73,11 +73,25 @@
 </header>
 
 <main>
+  <!-- Modal cookie -->
+  <div id="cookie-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:100;align-items:center;justify-content:center">
+    <div style="background:#13162a;border:1px solid #1e2340;border-radius:14px;padding:1.5rem;max-width:560px;width:90%">
+      <h3 style="font-size:.9rem;color:#fff;margin-bottom:.8rem">Atualizar Cookie do ChatGuru</h3>
+      <p style="font-size:.75rem;color:#64748b;margin-bottom:.8rem">1. Abra o ChatGuru no navegador → F12 → Network → clique em qualquer requisição → copie o valor do cabeçalho <b style="color:#94a3b8">Cookie</b></p>
+      <textarea id="cookie-input" style="width:100%;height:90px;background:#0b0d14;border:1px solid #2d3563;border-radius:8px;color:#e2e8f0;padding:.6rem;font-size:.72rem;resize:vertical" placeholder="Cole o cookie aqui..."></textarea>
+      <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.8rem">
+        <button onclick="document.getElementById('cookie-modal').style.display='none'">Cancelar</button>
+        <button onclick="saveCookieModal()" style="background:#3730a3;border-color:#4338ca;color:#fff">Salvar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toolbar">
     <div style="display:flex;align-items:center;gap:.75rem">
       <span id="cookie-status"></span>
     </div>
     <div class="toolbar-right">
+      <button onclick="document.getElementById('cookie-modal').style.display='flex'">🔑 Atualizar Cookie</button>
       <select id="periodo" onchange="loadHistorico()">
         <option value="7">Últimos 7 dias</option>
         <option value="30" selected>Últimos 30 dias</option>
@@ -310,6 +324,19 @@ async function loadAll() {
 async function injectTest() {
   await fetch('/api/teste', {method:'POST'});
   loadWebhooks();
+}
+
+async function saveCookieModal() {
+  const cookie = document.getElementById('cookie-input').value.trim();
+  const res = await fetch('/api/cookie', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cookie}) });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('cookie-modal').style.display = 'none';
+    document.getElementById('cookie-input').value = '';
+    loadHistorico();
+  } else {
+    alert('Erro: ' + (data.error || 'Cookie inválido'));
+  }
 }
 
 loadAll();

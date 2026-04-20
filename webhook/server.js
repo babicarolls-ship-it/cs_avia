@@ -16,70 +16,29 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Session manager ───────────────────────────────────────────────────────────
-let sessionCookie = '';
-let loginInProgress = false;
+const fs   = require('fs');
+const DATA_DIR    = require('path').join(__dirname, 'data');
+const COOKIE_FILE = require('path').join(DATA_DIR, 'session.txt');
 
-async function doLogin() {
-  if (loginInProgress) return false;
-  loginInProgress = true;
-  console.log('[auth] Renovando sessão ChatGuru...');
-
-  return new Promise(resolve => {
-    const body = `email=${encodeURIComponent(CHATGURU_EMAIL)}&password=${encodeURIComponent(CHATGURU_PASS)}&browser_session=`;
-    const host = new URL(CHATGURU_URL).hostname;
-
-    const req = https.request({
-      hostname: host,
-      path: '/login',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(body),
-        'User-Agent': 'Mozilla/5.0',
-      }
-    }, res => {
-      loginInProgress = false;
-      if (res.statusCode === 302) {
-        const cookies = res.headers['set-cookie'] || [];
-        const session = cookies.find(c => c.startsWith('session='));
-        if (session) {
-          sessionCookie = session.split(';')[0];
-          console.log('[auth] Sessão renovada com sucesso.');
-          resolve(true);
-        } else {
-          console.log('[auth] Login falhou — sem cookie de sessão.');
-          resolve(false);
-        }
-      } else {
-        console.log('[auth] Login falhou — status:', res.statusCode);
-        resolve(false);
-      }
-    });
-    req.on('error', e => { loginInProgress = false; console.log('[auth] Erro:', e.message); resolve(false); });
-    req.write(body);
-    req.end();
-  });
+function loadCookie() {
+  try { return fs.readFileSync(COOKIE_FILE, 'utf8').trim(); } catch { return ''; }
+}
+function saveCookie(val) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(COOKIE_FILE, val.trim());
 }
 
-async function cgFetch(urlPath, retry = true) {
-  if (!sessionCookie) {
-    const ok = await doLogin();
-    if (!ok) return null;
-  }
+let sessionCookie = process.env.CHATGURU_COOKIE || loadCookie();
 
-  return new Promise(async resolve => {
+async function cgFetch(urlPath) {
+  return new Promise(resolve => {
     const url = new URL(CHATGURU_URL + urlPath);
     https.get({
       hostname: url.hostname,
       path: url.pathname + url.search,
       headers: { Cookie: sessionCookie, 'User-Agent': 'Mozilla/5.0' },
     }, res => {
-      if (res.statusCode === 302 && retry) {
-        // Sessão expirou — faz login e tenta de novo
-        sessionCookie = '';
-        doLogin().then(ok => ok ? cgFetch(urlPath, false).then(resolve) : resolve(null));
-        return;
-      }
+      if (res.statusCode === 302) return resolve(null);
       let body = '';
       res.on('data', c => body += c);
       res.on('end', () => {
@@ -91,12 +50,6 @@ async function cgFetch(urlPath, retry = true) {
 
 function dateDaysAgo(n) {
   return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
-}
-
-// Renovação preventiva a cada 6h
-if (CHATGURU_EMAIL && CHATGURU_PASS) {
-  doLogin();
-  setInterval(doLogin, 6 * 60 * 60 * 1000);
 }
 
 // ── Webhook receiver ──────────────────────────────────────────────────────────
@@ -118,6 +71,21 @@ app.post('/webhook', (req, res) => {
   });
 
   res.json({ ok: true });
+});
+
+// ── Atualizar cookie via dashboard ───────────────────────────────────────────
+app.post('/api/cookie', (req, res) => {
+  const { cookie } = req.body;
+  if (!cookie || !cookie.includes('session='))
+    return res.status(400).json({ error: 'Cookie inválido — deve conter session=' });
+  sessionCookie = cookie.trim();
+  saveCookie(sessionCookie);
+  console.log('[auth] Cookie atualizado manualmente.');
+  res.json({ ok: true });
+});
+
+app.get('/api/cookie-status', (req, res) => {
+  res.json({ configurado: !!sessionCookie, tamanho: sessionCookie.length });
 });
 
 // ── Proxy histórico ChatGuru ──────────────────────────────────────────────────
