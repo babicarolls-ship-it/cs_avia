@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "/Users/babicarols/cs_avia/memory/knowledge_graph.json"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/babicarols/cs_avia"
+      ]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Read(/Users/babicarols/cs_avia/**)",
+      "Write(/Users/babicarols/cs_avia/**)",
+      "Edit(/Users/babicarols/cs_avia/**)"
+    ]
+  }
+}
