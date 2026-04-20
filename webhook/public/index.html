@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Camila Carvalho Digital</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3148;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 { font-size: 1.2rem; font-weight: 700; color: #fff; }
+    header span { font-size: 0.8rem; color: #64748b; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: #1e293b;
+      color: #94a3b8;
+    }
+    .badge.live { background: #052e16; color: #4ade80; }
+    .badge.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    main { padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+
+    /* KPI cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .kpi-card {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+    }
+    .kpi-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem; }
+    .kpi-card .value { font-size: 2rem; font-weight: 700; color: #fff; }
+    .kpi-card .sub   { font-size: 0.72rem; color: #475569; margin-top: .2rem; }
+
+    /* Charts grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-card {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+    }
+    .chart-card h2 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+    .chart-card canvas { max-height: 240px; }
+
+    /* Tabela de eventos */
+    .events-card {
+      background: #1a1d2e;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+    }
+    .events-card h2 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead th { text-align: left; padding: .5rem .75rem; color: #475569; border-bottom: 1px solid #2d3148; font-weight: 500; }
+    tbody td { padding: .55rem .75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+    tbody tr:hover { background: #1e2235; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .pill.aberto    { background: #052e16; color: #4ade80; }
+    .pill.fechado   { background: #1e1b4b; color: #818cf8; }
+    .pill.pendente  { background: #2d1a0e; color: #fb923c; }
+    .pill.default   { background: #1e293b; color: #94a3b8; }
+
+    /* Botão refresh */
+    .toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #2d3148;
+      color: #cbd5e1;
+      border: 1px solid #3d4168;
+      border-radius: 8px;
+      padding: .4rem .9rem;
+      font-size: .8rem;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button:hover { background: #3d4168; }
+    button.danger { background: #2d1a0e; border-color: #7c2d12; color: #fb923c; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Dashboard — Camila Carvalho Digital</h1>
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <span id="last-update"></span>
+    <span class="badge live" id="live-badge">Ao vivo</span>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <button onclick="loadAll()">↻ Atualizar</button>
+    <button class="danger" onclick="injectTest()">+ Dados de teste</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="label">Hoje</div>
+      <div class="value" id="kpi-hoje">–</div>
+      <div class="sub">eventos recebidos</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Últimos 7 dias</div>
+      <div class="value" id="kpi-semana">–</div>
+      <div class="sub">eventos</div>
+    </div>
+    <div class="kpi-card">
+      <div class="label">Este mês</div>
+      <div class="value" id="kpi-mes">–</div>
+      <div class="sub">eventos</div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h2>Volume diário (30 dias)</h2>
+      <canvas id="chart-diario"></canvas>
+    </div>
+    <div class="chart-card">
+      <h2>Por atendente</h2>
+      <canvas id="chart-atendente"></canvas>
+    </div>
+    <div class="chart-card">
+      <h2>Por equipe</h2>
+      <canvas id="chart-equipe"></canvas>
+    </div>
+    <div class="chart-card">
+      <h2>Volume por hora (hoje)</h2>
+      <canvas id="chart-horario"></canvas>
+    </div>
+    <div class="chart-card">
+      <h2>Status dos chats</h2>
+      <canvas id="chart-status"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabela de eventos recentes -->
+  <div class="events-card">
+    <h2>Eventos recentes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Data/Hora</th>
+          <th>Número</th>
+          <th>Atendente</th>
+          <th>Equipe</th>
+          <th>Status</th>
+          <th>Tipo</th>
+        </tr>
+      </thead>
+      <tbody id="eventos-tbody"></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+const COLORS = ['#6366f1','#22d3ee','#f59e0b','#4ade80','#f43f5e','#a78bfa','#34d399','#fb923c'];
+
+let charts = {};
+
+function createOrUpdate(id, type, labels, data, label, colorIndex = 0) {
+  const ctx = document.getElementById(id).getContext('2d');
+  const color = COLORS[colorIndex % COLORS.length];
+
+  if (charts[id]) {
+    charts[id].data.labels = labels;
+    charts[id].data.datasets[0].data = data;
+    charts[id].update();
+    return;
+  }
+
+  const isDonut = type === 'doughnut';
+  charts[id] = new Chart(ctx, {
+    type,
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        backgroundColor: isDonut ? COLORS : color + '33',
+        borderColor: isDonut ? COLORS : color,
+        borderWidth: 2,
+        fill: type === 'line',
+        tension: 0.4,
+        pointRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: isDonut, labels: { color: '#94a3b8', font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y ?? ctx.parsed} eventos` } }
+      },
+      scales: isDonut ? {} : {
+        x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e293b' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+async function loadAll() {
+  try {
+    const [resumo, diario, atendente, equipe, horario, statusData, eventos] = await Promise.all([
+      fetch('/api/resumo').then(r => r.json()),
+      fetch('/api/volume-diario').then(r => r.json()),
+      fetch('/api/por-atendente').then(r => r.json()),
+      fetch('/api/por-equipe').then(r => r.json()),
+      fetch('/api/volume-horario').then(r => r.json()),
+      fetch('/api/por-status').then(r => r.json()),
+      fetch('/api/eventos-recentes').then(r => r.json()),
+    ]);
+
+    // KPIs
+    document.getElementById('kpi-hoje').textContent   = resumo.hoje;
+    document.getElementById('kpi-semana').textContent = resumo.semana;
+    document.getElementById('kpi-mes').textContent    = resumo.mes;
+
+    // Volume diário
+    createOrUpdate('chart-diario', 'line',
+      diario.map(r => r.dia),
+      diario.map(r => r.total),
+      'Eventos', 0);
+
+    // Por atendente
+    createOrUpdate('chart-atendente', 'bar',
+      atendente.map(r => r.atendente),
+      atendente.map(r => r.total),
+      'Chats', 1);
+
+    // Por equipe
+    createOrUpdate('chart-equipe', 'bar',
+      equipe.map(r => r.equipe),
+      equipe.map(r => r.total),
+      'Chats', 2);
+
+    // Volume horário
+    const horas = Array.from({length: 24}, (_, i) => String(i).padStart(2, '0'));
+    const horMap = Object.fromEntries(horario.map(r => [r.hora, r.total]));
+    createOrUpdate('chart-horario', 'bar',
+      horas,
+      horas.map(h => horMap[h] || 0),
+      'Eventos hoje', 3);
+
+    // Status
+    createOrUpdate('chart-status', 'doughnut',
+      statusData.map(r => r.status_chat),
+      statusData.map(r => r.total),
+      'Status');
+
+    // Tabela
+    const tbody = document.getElementById('eventos-tbody');
+    tbody.innerHTML = eventos.map(e => `
+      <tr>
+        <td style="color:#475569">${e.id}</td>
+        <td>${e.received_at}</td>
+        <td>${e.chat_number || '–'}</td>
+        <td>${e.atendente || '–'}</td>
+        <td>${e.equipe || '–'}</td>
+        <td>${pillStatus(e.status_chat)}</td>
+        <td>${e.event_type || '–'}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('last-update').textContent =
+      'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+  } catch (err) {
+    console.error('Erro ao carregar dados', err);
+  }
+}
+
+function pillStatus(s) {
+  if (!s) return `<span class="pill default">–</span>`;
+  const cls = ['aberto','fechado','pendente'].includes(s.toLowerCase()) ? s.toLowerCase() : 'default';
+  return `<span class="pill ${cls}">${s}</span>`;
+}
+
+async function injectTest() {
+  await fetch('/api/teste', { method: 'POST' });
+  loadAll();
+}
+
+// Carregar ao iniciar + auto-refresh a cada 30s
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>
